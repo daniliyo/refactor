@@ -9,32 +9,69 @@ interface iCart
     public function makeOrder($discount = 1.0);
 }
 
+/*
+У нас есть переменные в расчете суммы - 0.18 и 1.18 - Enum как альтернатива константам
+*/
+enum vatOddEnum
+{
+    case ForCalc = 0.18;
+    case ForMail = 1.18;
+}
+
 class Cart implements iCart
 {
-    public $items;
-    public $order;
+    
+    
+    // Пользователю не стоит уметь напрямую влиять на items
+    protected $items;
+    // Пользователю не нужно знать про эту переменную
+    protected Order $order;
+    
+    // new Cart(new SimpleMailer('cartuser', 'j049lj-01'));
+    public function __construct(protected SimpleMailer $m) {}
+    /*
+    Альтернатива
+    interface MailerInterface(){...};
+    class SimpleMailer interface MailerInterface { ... }
+    public function __construct(protected MailerInterface $m) {}
+    */
+    
+    public function getPriceItems(vatOddEnum $odd, $discount = 1){
+        $result = 0;
+        foreach ($this->items as $item) {
+            $result += $item->getPrice() * $odd;
+        }
+        return $result;
+    }
+    
+    // Для контроля установки товаров
+    public function setItems(Array $items)
+    {
+        $this->items = $items;
+    } 
 
     public function calcVat()
     {
-        $vat = 0;
-        foreach ($this->items as $item) {
-            $vat += $item->getPrice() * 0.18;
-        }
-        return $vat;
+        // В данном месте дублируется ункциональность - вынесен в отдельный метод
+        return $this->getPriceItems(vatOddEnum::ForCalc);
     }
 
-    public function notify()
+    // Это внутренний метод, пользователю он не понадобится напрямую 
+    protected function notify()
     {
         $this->sendMail();
     }
 
-    public function sendMail()
+    // Это внутренний метод, пользователю он не понадобится напрямую 
+    protected function sendMail()
     {
-        $m = new SimpleMailer('cartuser', 'j049lj-01');
-        $p = 0;
-        foreach ($this->items as $item) {
-            $p += $item->getPrice() * 1.18;
-        }
+        // данная запись создает жесткую связь внутри класса
+        // если планируется расширение, данный объект лучше передавать через конструктор или метод установщик
+        // $m = new SimpleMailer('cartuser', 'j049lj-01');
+        
+        // В данном месте дублируется ункциональность - вынесен в отдельный метод
+        $p = $this->getPriceItems(vatOddEnum::ForMail);
+        
         $ms = "<p> <b>" . $this->order->id() . "</b> " . $p . " .</p>";
 
         $m->sendToManagers($ms);
@@ -42,10 +79,9 @@ class Cart implements iCart
 
     public function makeOrder($discount)
     {
-        $p = 0;
-        foreach ($this->items as $item) {
-            $p += $item->getPrice() * 1.18 * $discount;
-        }
+        // В данном месте дублируется ункциональность - вынесен в отдельный метод
+        $p = $this->getPriceItems(vatOddEnum::ForCalc, $discount);
+        
         $this->order = new Order($this->items, $p);
         $this->sendMail();
     }
