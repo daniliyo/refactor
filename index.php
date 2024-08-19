@@ -39,7 +39,7 @@ class Cart implements iCart
     public function getPriceItems(vatOddEnum $odd, $discount = 1){
         $result = 0;
         foreach ($this->items as $item) {
-            $result += $item->getPrice() * $odd;
+            $result += $item->getPrice() * $odd * $discount;
         }
         return $result;
     }
